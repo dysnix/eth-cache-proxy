@@ -12,17 +12,18 @@ from aioprometheus.renderer import render
 
 
 def get_hash(data_orig):
-    try:
+    if type(data_orig) is dict:
         data = dict(sorted(data_orig.copy().items()))
-    except:
+        try:
+            del data['id']
+        except:
+            logging.error('No id present in payload')
+            pass
+    elif type(data_orig) is list:
+        data = data_orig
+    else:
         logging.error('Bad payload: {}'.format(str(data_orig)))
-        raise aiohttp.web.HTTPBadRequest()
-
-    try:
-        del data['id']
-    except:
-        logging.error('No id present in payload')
-        pass
+        raise aiohttp.web.HTTPInternalServerError()
 
     hash_object = hashlib.sha1(ujson.dumps(data).encode('utf8'))
 
