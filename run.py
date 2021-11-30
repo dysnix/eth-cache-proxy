@@ -5,7 +5,10 @@ import aiohttp
 import settings
 from aiohttp import web
 from aiocache import cached
+from aiohttp.hdrs import ACCEPT
 from aiocache.serializers import JsonSerializer
+from aioprometheus import REGISTRY, Counter
+from aioprometheus.renderer import render
 
 
 def get_hash(data_orig):
@@ -34,6 +37,7 @@ async def rpc_request(data):
         async with session.post(settings.BACKEND_RPC_URL, json=data) as resp:
             res = await resp.json()
             logging.debug('Result: {}'.format(str(res)))
+            app.requests_counter.inc({"type": "proxied"})
             return res
 
 
@@ -44,11 +48,22 @@ async def handle(request):
         raise aiohttp.web.HTTPBadRequest()
 
     logging.debug('Request: {}'.format(str(data)))
+    app.requests_counter.inc({"type": "total"})
+
     return web.json_response(await rpc_request(data=data))
+
+
+async def handle_metrics(request):
+    content, http_headers = render(REGISTRY, request.headers.getall(ACCEPT, []))
+    return web.Response(body=content, headers=http_headers)
 
 
 if __name__ == "__main__":
     app = web.Application()
+
+    app.requests_counter = Counter("requests_counter", "Total requests")
+
     app.router.add_route('POST', '/{tail:.*}', handle)
+    app.router.add_route('GET', '/metrics', handle_metrics)
 
     web.run_app(app)
