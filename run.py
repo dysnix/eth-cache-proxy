@@ -12,7 +12,11 @@ from aioprometheus.renderer import render
 
 
 def get_hash(data_orig):
-    data = dict(sorted(data_orig.copy().items()))
+    try:
+        data = dict(sorted(data_orig.copy().items()))
+    except:
+        logging.error('Bad payload: {}'.format(str(data_orig)))
+        raise aiohttp.web.HTTPBadRequest()
 
     try:
         del data['id']
