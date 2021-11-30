@@ -5,3 +5,4 @@ CACHE_TTL = int(os.environ.get('CACHE_TTL', '3'))
 
 REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT', '127.0.0.1')
 REDIS_PORT = int(os.environ.get('REDIS_PORT', '6379'))
+DEBUG = bool(os.environ.get('DEBUG'))

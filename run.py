@@ -62,6 +62,10 @@ async def handle_metrics(request):
 if __name__ == "__main__":
     app = web.Application()
 
+    if settings.DEBUG:
+        import aiohttp_debugtoolbar
+        aiohttp_debugtoolbar.setup(app)
+
     app.requests_counter = Counter("requests_counter", "Total requests")
 
     app.router.add_route('POST', '/{tail:.*}', handle)
