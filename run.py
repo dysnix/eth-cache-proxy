@@ -1,4 +1,4 @@
-import json
+import ujson
 import logging
 import hashlib
 import aiohttp
@@ -17,7 +17,7 @@ def get_hash(data_orig):
         logging.error('No id present in payload')
         pass
 
-    hash_object = hashlib.sha1(json.dumps(data).encode('utf8'))
+    hash_object = hashlib.sha1(ujson.dumps(data).encode('utf8'))
 
     return hash_object.hexdigest()
 
