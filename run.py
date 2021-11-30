@@ -30,24 +30,25 @@ def get_hash(data_orig):
     return hash_object.hexdigest()
 
 
-def build_key(f, data):
+def build_key(f, data, session):
     k = "{}_{}".format(f.__name__, get_hash(data))
     logging.debug('key: {}'.format(k))
     return k
 
 
+# @cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL)
 @cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL, cache=Cache.REDIS,
         endpoint=settings.REDIS_ENDPOINT, port=settings.REDIS_PORT, namespace="main")
-async def rpc_request(data):
-    async with aiohttp.ClientSession() as session:
-        async with session.post(settings.BACKEND_RPC_URL, json=data) as resp:
-            res = await resp.json()
-            logging.debug('Result: {}'.format(str(res)))
-            app.requests_counter.inc({"type": "proxied"})
-            return res
+async def rpc_request(data, session):
+    async with session.post(settings.BACKEND_RPC_URL, json=data) as resp:
+        res = await resp.json()
+        logging.debug('Result: {}'.format(str(res)))
+        app.requests_counter.inc({"type": "proxied"})
+        return res
 
 
 async def handle(request):
+    session = request.app['PERSISTENT_SESSION']
     try:
         data = await request.json()
     except:
@@ -56,7 +57,7 @@ async def handle(request):
     logging.debug('Request: {}'.format(str(data)))
     app.requests_counter.inc({"type": "total"})
 
-    return web.json_response(await rpc_request(data=data))
+    return web.json_response(await rpc_request(data=data, session=session))
 
 
 async def handle_metrics(request):
@@ -64,8 +65,15 @@ async def handle_metrics(request):
     return web.Response(body=content, headers=http_headers)
 
 
+async def persistent_session(app):
+    app['PERSISTENT_SESSION'] = session = aiohttp.ClientSession()
+    yield
+    await session.close()
+
+
 if __name__ == "__main__":
     app = web.Application()
+    app.cleanup_ctx.append(persistent_session)
 
     app.requests_counter = Counter("requests_counter", "Total requests")
 
