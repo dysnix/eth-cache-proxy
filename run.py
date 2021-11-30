@@ -4,7 +4,7 @@ import hashlib
 import aiohttp
 import settings
 from aiohttp import web
-from aiocache import cached
+from aiocache import cached, Cache
 from aiohttp.hdrs import ACCEPT
 from aiocache.serializers import JsonSerializer
 from aioprometheus import REGISTRY, Counter
@@ -31,7 +31,8 @@ def build_key(f, data):
     return k
 
 
-@cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL)
+@cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL, cache=Cache.REDIS,
+        endpoint=settings.REDIS_ENDPOINT, port=settings.REDIS_PORT, namespace="main")
 async def rpc_request(data):
     async with aiohttp.ClientSession() as session:
         async with session.post(settings.BACKEND_RPC_URL, json=data) as resp:
