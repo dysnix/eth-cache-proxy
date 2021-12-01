@@ -1,7 +1,5 @@
 name: Build and Push
 on:
-  release:
-    types: [published]  
   push:
     branches:
       - '**'
