@@ -89,6 +89,7 @@ async def persistent_session(app):
 
 if __name__ == "__main__":
     app = web.Application()
+    logging.basicConfig(level=settings.LOG_LEVEL)
     app.cleanup_ctx.append(persistent_session)
 
     app.requests_counter = Counter("requests_counter", "Total requests")
