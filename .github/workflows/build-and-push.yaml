@@ -49,7 +49,7 @@ jobs:
         with:
           images: ${{ needs.pre.outputs.image }}
           flavor: |
-            latest=${{ steps.latest.outputs.newer == 'true' }}
+            latest=${{ steps.latest.outputs.newer == 'true' || steps.latest.outputs.equal == 'true' }}
           tags: |
             type=ref,event=tag
             type=ref,event=branch
