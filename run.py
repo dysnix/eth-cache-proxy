@@ -9,6 +9,7 @@ from aiohttp.hdrs import ACCEPT
 from aiocache.serializers import JsonSerializer
 from aioprometheus import REGISTRY, Counter
 from aioprometheus.renderer import render
+from aiohttp_healthcheck import HealthCheck
 
 
 def get_hash(data_orig):
@@ -36,15 +37,21 @@ def build_key(f, data, session):
     return k
 
 
-# @cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL)
-@cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL, cache=Cache.REDIS,
-        endpoint=settings.REDIS_ENDPOINT, port=settings.REDIS_PORT, namespace="main")
 async def rpc_request(data, session):
     async with session.post(settings.BACKEND_RPC_URL, json=data) as resp:
         res = await resp.json()
         logging.debug('Result: {}'.format(str(res)))
         app.requests_counter.inc({"type": "proxied"})
         return res
+
+
+# @cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL)
+@cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL, cache=Cache.REDIS,
+        endpoint=settings.REDIS_ENDPOINT, port=settings.REDIS_PORT, namespace="main")
+async def cached_rpc_request(data, session):
+    logging.debug('Request: {}'.format(str(data)))
+    app.requests_counter.inc({"type": "total"})
+    return await rpc_request(data, session)
 
 
 async def handle(request):
@@ -54,15 +61,17 @@ async def handle(request):
     except:
         raise aiohttp.web.HTTPBadRequest()
 
-    logging.debug('Request: {}'.format(str(data)))
-    app.requests_counter.inc({"type": "total"})
-
-    response = await rpc_request(data=data, session=session)
-
-    try:
-        response['id'] = data['id']
-    except:
-        logging.error('Error to set response ID')
+    if type(data) is dict:
+        response = await cached_rpc_request(data=data, session=session)
+        try:
+            response['id'] = data['id']
+        except:
+            logging.error('Error to set response ID')
+    elif type(data) is list:
+        # Don't cache bulk requests
+        response = await rpc_request(data=data, session=session)
+    else:
+        raise aiohttp.web.HTTPInternalServerError()
 
     return web.json_response(response)
 
@@ -84,7 +93,11 @@ if __name__ == "__main__":
 
     app.requests_counter = Counter("requests_counter", "Total requests")
 
-    app.router.add_route('POST', '/{tail:.*}', handle)
-    app.router.add_route('GET', '/metrics', handle_metrics)
+    health = HealthCheck()
+
+    app.router.add_post('/{tail:.*}', handle)
+
+    app.router.add_get('/metrics', handle_metrics)
+    app.router.add_get("/healthz", health)
 
     web.run_app(app)
