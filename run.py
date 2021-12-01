@@ -57,7 +57,14 @@ async def handle(request):
     logging.debug('Request: {}'.format(str(data)))
     app.requests_counter.inc({"type": "total"})
 
-    return web.json_response(await rpc_request(data=data, session=session))
+    response = await rpc_request(data=data, session=session)
+
+    try:
+        response['id'] = data['id']
+    except:
+        logging.error('Error to set response ID')
+
+    return web.json_response(response)
 
 
 async def handle_metrics(request):
