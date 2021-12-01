@@ -7,11 +7,17 @@ from aiohttp import web
 from aiocache import cached, Cache
 from aiohttp.hdrs import ACCEPT
 from aiocache.serializers import JsonSerializer
-from aioprometheus import REGISTRY, Counter
+from aioprometheus import REGISTRY, Summary, Counter, timer
 from aioprometheus.renderer import render
 from aiohttp_healthcheck import HealthCheck
 
+# Create a metric to track time spent and requests made.
+REQUEST_TIME = Summary("eth_cache_request_seconds", "Time spent request processing request")
+PROXY_TIME = Summary("eth_cache_proxy_seconds", "Time spent proxy processing request")
+HASH_TIME = Summary("eth_cache_hash_seconds", "Time spent hash request payload")
 
+
+@timer(HASH_TIME)
 def get_hash(data_orig):
     if type(data_orig) is dict:
         data = dict(sorted(data_orig.copy().items()))
@@ -37,23 +43,22 @@ def build_key(f, data, session):
     return k
 
 
+@timer(PROXY_TIME)
 async def rpc_request(data, session):
     async with session.post(settings.BACKEND_RPC_URL, json=data) as resp:
         res = await resp.json()
         logging.debug('Result: {}'.format(str(res)))
-        app.requests_counter.inc({"type": "proxied"})
         return res
 
 
-# @cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL)
 @cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL, cache=Cache.REDIS,
         endpoint=settings.REDIS_ENDPOINT, port=settings.REDIS_PORT, namespace="main")
 async def cached_rpc_request(data, session):
     logging.debug('Request: {}'.format(str(data)))
-    app.requests_counter.inc({"type": "total"})
     return await rpc_request(data, session)
 
 
+@timer(REQUEST_TIME)
 async def handle(request):
     session = request.app['PERSISTENT_SESSION']
     try:
@@ -91,8 +96,6 @@ if __name__ == "__main__":
     app = web.Application()
     logging.basicConfig(level=settings.LOG_LEVEL)
     app.cleanup_ctx.append(persistent_session)
-
-    app.requests_counter = Counter("requests_counter", "Total requests")
 
     health = HealthCheck()
 
