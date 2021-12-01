@@ -1,13 +1,8 @@
 FROM python:3.9.9
 
-ADD requirements.txt /usr/src/app/requirements.txt
-
 WORKDIR /usr/src/app
-
-RUN pip install -r requirements.txt
-
-ADD ./ /usr/src/app/
+COPY requirements.txt *.py /usr/src/app/
+RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 8080
-
 CMD ["python", "run.py"]
