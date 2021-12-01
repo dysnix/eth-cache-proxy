@@ -8,7 +8,8 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+-*'
 
 # env:
-  ## SET_NAME - overrides the docker image name (name is repo name with docker- prefix stripped)
+#   ## overrides the docker image name (name is repo name with docker- prefix stripped)
+#   DOCKER_IMAGE: foobar
 
 jobs:
   pre:
@@ -16,11 +17,14 @@ jobs:
     outputs:
       image: ${{ steps.set.outputs.image }}
     steps:
-      - id: set
-        run: |
-          # Computed org/repo name, docker- prefix is stripped off
-          export DEFAULT_IMAGE=$(echo -n '${{ github.event.organization.login }}/'; echo '${{ github.event.repository.name }}' | sed 's/^docker-//' | tr '[:upper:]' '[:lower:]')
-          echo "::set-output name=image::${SET_NAME:-$DEFAULT_IMAGE}"
+      -
+        uses: actions/github-script@v4
+        id: set
+        with:
+          script: |
+            const image = '${{ github.event.repository.full_name }}'.toLowerCase().replace(/\/docker-/, '/')
+            core.setOutput('image', '${{ env.DOCKER_IMAGE }}' ? '${{ env.DOCKER_IMAGE }}' : image)
+
   build:
     name: Build Docker Image
     runs-on: ubuntu-latest
@@ -43,7 +47,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ${{ steps.set.outputs.image }}
+          images: ${{ needs.pre.outputs.image }}
           flavor: |
             latest=${{ steps.latest.outputs.newer == 'true' }}
           tags: |
@@ -70,7 +74,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          push: false
+          push: ${{ steps.latest.outputs.newer == 'true' }}
           file: Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
