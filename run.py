@@ -9,7 +9,6 @@ from aiohttp.hdrs import ACCEPT
 from aiocache.serializers import JsonSerializer
 from aioprometheus import REGISTRY, Summary, timer
 from aioprometheus.renderer import render
-from aiohttp_healthcheck import HealthCheck
 
 # Create a metric to track time spent and requests made.
 REQUEST_TIME = Summary("eth_cache_request_seconds", "Time spent request processing request")
@@ -87,6 +86,10 @@ async def handle_metrics(request):
     return web.Response(body=content, headers=http_headers)
 
 
+async def healthz(request):
+    return web.Response(body="OK")
+
+
 async def persistent_session(app):
     app['PERSISTENT_SESSION'] = session = aiohttp.ClientSession()
     yield
@@ -98,12 +101,10 @@ async def eth_cache_proxy():
     logging.basicConfig(level=settings.LOG_LEVEL)
     app.cleanup_ctx.append(persistent_session)
 
-    health = HealthCheck()
-
     app.router.add_post('/{tail:.*}', handle)
 
     app.router.add_get('/metrics', handle_metrics)
-    app.router.add_get("/healthz", health)
+    app.router.add_get("/healthz", healthz)
 
     return app
 
