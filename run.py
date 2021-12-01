@@ -92,7 +92,7 @@ async def persistent_session(app):
     await session.close()
 
 
-if __name__ == "__main__":
+async def eth_cache_proxy():
     app = web.Application()
     logging.basicConfig(level=settings.LOG_LEVEL)
     app.cleanup_ctx.append(persistent_session)
@@ -104,4 +104,8 @@ if __name__ == "__main__":
     app.router.add_get('/metrics', handle_metrics)
     app.router.add_get("/healthz", health)
 
-    web.run_app(app)
+    return app
+
+
+if __name__ == "__main__":
+    web.run_app(eth_cache_proxy())

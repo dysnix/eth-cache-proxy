@@ -9,5 +9,6 @@ RUN pip install -r requirements.txt
 ADD ./ /usr/src/app/
 
 EXPOSE 8080
+ENV GUNICORN_WORKERS 4
 
-CMD ["python", "run.py"]
+CMD ["gunicorn", "run:eth_cache_proxy", "--bind", "0.0.0.0:8080", "--worker-class", "aiohttp.GunicornWebWorker", "--workers", "${GUNICORN_WORKERS}"]
