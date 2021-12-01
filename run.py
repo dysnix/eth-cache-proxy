@@ -51,8 +51,9 @@ async def rpc_request(data, session):
         return res
 
 
-@cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL, cache=Cache.REDIS,
-        endpoint=settings.REDIS_ENDPOINT, port=settings.REDIS_PORT, namespace="main")
+# @cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL, cache=Cache.REDIS,
+#         endpoint=settings.REDIS_ENDPOINT, port=settings.REDIS_PORT, namespace="main")
+@cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL)
 async def cached_rpc_request(data, session):
     logging.debug('Request: {}'.format(str(data)))
     return await rpc_request(data, session)
