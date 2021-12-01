@@ -7,7 +7,7 @@ from aiohttp import web
 from aiocache import cached, Cache
 from aiohttp.hdrs import ACCEPT
 from aiocache.serializers import JsonSerializer
-from aioprometheus import REGISTRY, Summary, Counter, timer
+from aioprometheus import REGISTRY, Summary, timer
 from aioprometheus.renderer import render
 from aiohttp_healthcheck import HealthCheck
 
