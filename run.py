@@ -66,19 +66,23 @@ async def handle(request):
     except:
         raise aiohttp.web.HTTPBadRequest()
 
-    if type(data) is dict:
-        response = await cached_rpc_request(data=data, session=session)
-        try:
-            response['id'] = data['id']
-        except:
-            logging.error('Error to set response ID')
-    elif type(data) is list:
-        # Don't cache bulk requests
-        response = await rpc_request(data=data, session=session)
-    else:
-        raise aiohttp.web.HTTPInternalServerError()
+    try:
+        if type(data) is dict:
+            response = await cached_rpc_request(data=data, session=session)
+            try:
+                response['id'] = data['id']
+            except:
+                logging.error('Error to set response ID')
+        elif type(data) is list:
+            # Don't cache bulk requests
+            response = await rpc_request(data=data, session=session)
+        else:
+            raise aiohttp.web.HTTPInternalServerError()
 
-    return web.json_response(response)
+        return web.json_response(response)
+    except Exception as e:
+        logging.error(e)
+        raise aiohttp.web.HTTPInternalServerError()
 
 
 async def handle_metrics(request):
