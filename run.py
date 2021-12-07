@@ -37,7 +37,8 @@ def get_hash(data_orig):
 
 
 def build_key(f, data, session):
-    k = "{}_{}".format(f.__name__, get_hash(data))
+    # k = "{}_{}".format(f.__name__, get_hash(data))
+    k = get_hash(data)
     logging.debug('key: {}'.format(k))
     return k
 
@@ -50,9 +51,8 @@ async def rpc_request(data, session):
         return res
 
 
-# @cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL, cache=Cache.REDIS,
-#         endpoint=settings.REDIS_ENDPOINT, port=settings.REDIS_PORT, namespace="main")
-@cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL)
+@cached(key_builder=build_key, serializer=JsonSerializer(), ttl=settings.CACHE_TTL, cache=Cache.REDIS,
+        endpoint=settings.REDIS_ENDPOINT, port=settings.REDIS_PORT, namespace="main")
 async def cached_rpc_request(data, session):
     logging.debug('Request: {}'.format(str(data)))
     return await rpc_request(data, session)
